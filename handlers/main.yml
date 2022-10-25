@@ -1,0 +1,12 @@
+---
+- name: SSH Port > Handler > SSH > Restart
+  ansible.builtin.service: 
+    name: sshd
+    state: restarted
+
+- name: SSH Port > Handler > SSH > Check Connection
+  ansible.builtin.ping:
+
+- name: SSH Port > Handler > SSH > Set_Fact > Port
+  ansible.builtin.set_fact:
+    ansible_port: "{{ custom_port }}"

@@ -1,0 +1,12 @@
+---
+- name: SSH Port > Detect
+  ansible.builtin.include_tasks: detect_port.yaml
+
+- name: SSH > Fingerprint
+  ansible.builtin.include_tasks: fingerprint.yaml
+
+- name: SSH Port > Change
+  ansible.builtin.include_tasks: change_port.yaml
+  when:
+    - ssh_port_change
+    - ansible_port != 22

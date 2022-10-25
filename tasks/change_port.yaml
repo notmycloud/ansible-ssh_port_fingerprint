@@ -1,0 +1,32 @@
+---
+- name: SSH Port > Change > Gather Facts
+  ansible.builtin.setup:
+
+- name: SSH Port > Change > Debug > SSH Port
+  ansible.builtin.debug:
+    var: custom_port
+
+- name: SSH Port > Change > SSH Config Option > Port ({{ custom_port | default(22) }})
+  ansible.builtin.lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^#?Port"
+    line: "Port {{ custom_port | default(22) }}"
+    state: present
+  notify: 
+    - Restart SSH
+    - Set SSH Port
+    - Ping SSH
+  
+- name: SSH Port > Change > SELinux > Authorize alternate port
+  ansible.builtin.seport:
+    ports: "{{ custom_port | default(22) }}"
+    proto: "tcp"
+    setype: "ssh_port_t"
+    state: "present"
+  when: ansible_os_family == 'RedHat'
+  register: result
+  failed_when: result.msg | default('ok', True) is not search('(^ok$|libselinux-python|(SELinux state changed))')
+
+# We notified "Restart sshd" if we modified the sshd config.
+# By calling flush_handlers, we make sure the handler is run *right now*
+- ansible.builtin.meta: flush_handlers

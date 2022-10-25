@@ -1,0 +1,4 @@
+---
+ssh_port_change: false
+ansible_port: 22
+global_known_hosts: false
