@@ -31,9 +31,9 @@
     - host_keys.ed25519 == ''
 
 - ansible.builtin.set_fact:
-    known_hosts_filepath: "{% if global_known_hosts %}/etc/ssh/{% else %}$HOME/.ssh/{% endif %}known_hosts.d/"
+    known_hosts_filepath: "{% if global_known_hosts %}/etc/ssh/{% else %}~/.ssh/{% endif %}known_hosts.d/"
     known_hosts_systempath: "/etc/ssh/known_hosts.d/"
-    known_hosts_userpath: "$HOME/.ssh/known_hosts.d/"
+    known_hosts_userpath: "~/.ssh/known_hosts.d/"
 
 - name: SSH > Fingerprint > Create Known Hosts Folder > {{ known_hosts_systempath }}
   ansible.builtin.file:
@@ -55,7 +55,7 @@
   ansible.builtin.lineinfile:
     path: /etc/ssh/ssh_config
     regexp: '^GlobalKnownHostsFile'
-    line: GlobalKnownHostsFile {{ known_hosts_systempath }}%k /etc/ssh/known_hosts
+    line: "    GlobalKnownHostsFile {{ known_hosts_systempath }}%n /etc/ssh/known_hosts"
   become: true
   delegate_to: "localhost"
 
@@ -63,11 +63,11 @@
   ansible.builtin.lineinfile:
     path: /etc/ssh/ssh_config
     regexp: '^UserKnownHostsFile'
-    line: UserKnownHostsFile {{ known_hosts_userpath }}%k ~/.ssh/known_hosts
+    line: "    UserKnownHostsFile {{ known_hosts_userpath }}%n ~/.ssh/known_hosts"
   become: true
   delegate_to: "localhost"
 
-- name: SSH > Fingerprint > Host Key > Diff
+- name: SSH > Fingerprint > Host Key > Diff > {{ known_hosts_filepath }}
   ansible.builtin.blockinfile:
     backup: true
     marker: "# {mark} SSH Keys for {{ inventory_hostname }}"
@@ -99,7 +99,7 @@
     - check_host_entry.changed
     - verify_host_keys | default(true)
 
-- name: SSH > Fingerprint > Host Keys > Commit Changes
+- name: SSH > Fingerprint > Host Keys > Commit Changes > {{ known_hosts_filepath }}
   ansible.builtin.blockinfile:
     backup: true
     marker: "# {mark} SSH Keys for {{ inventory_hostname }}"
