@@ -1,5 +1,5 @@
 galaxy_info:
-namespace: notmyclout
+  namespace: notmycloud
   role_name: ssh_port_fingerprint
   author: Austin Arbour
   description: This role will detect the SSH port to determine if it is standard or custom and change it if required. It will also scan the host key fingerprints and prompt to add them to the known hosts.
