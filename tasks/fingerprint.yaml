@@ -2,8 +2,16 @@
 # Add IP address via DNS lookup if just a hostname.
 - name: SSH > Fingerprint > Discover Connection Endpoints
   ansible.builtin.set_fact:
-    ssh_hosts: "{{ inventory_hostname }}{% if inventory_hostname | ansible.utils.ipaddr is sameas false %},{{ lookup('pipe', 'dig +short ' + inventory_hostname) | replace('\n', ',')}}{% endif %}"
+    ssh_hosts: >-
+      {{ inventory_hostname }}
+      {% if inventory_hostname | ansible.utils.ipaddr is sameas false %},
+      {{ lookup('pipe', 'dig +short ' + inventory_hostname) | replace('\n', ',')}}
+      {% endif %}"
     ssh_port: "{{ ansible_port | default(22) }}"
+
+- name: SSH > Fingerprint > Massage ssh_host output
+  ansible.builtin.set_fact:
+    ssh_hosts: "{{ ssh_host | replace(' ', '') }}"
 
 - name: SSH > Fingerprint > Debug > Connection Endpoints
   ansible.builtin.debug:
@@ -15,7 +23,9 @@
       rsa: "{{ lookup('pipe', 'ssh-keyscan -trsa -p' + ssh_port + ' ' + ssh_hosts, errors='ignore') }}"
       dsa: "{{ lookup('pipe', 'ssh-keyscan -tdsa -p' + ssh_port + ' ' + ssh_hosts, errors='ignore') }}"
       ecdsa: "{{ lookup('pipe', 'ssh-keyscan -tecdsa -p' + ssh_port + ' ' + ssh_hosts, errors='ignore') }}"
+      ecdsask: "{{ lookup('pipe', 'ssh-keyscan -tecdsa-sk -p' + ssh_port + ' ' + ssh_hosts, errors='ignore') }}"
       ed25519: "{{ lookup('pipe', 'ssh-keyscan -ted25519 -p' + ssh_port + ' ' + ssh_hosts, errors='ignore') }}"
+      ed25519sk: "{{ lookup('pipe', 'ssh-keyscan -ted25519-sk -p' + ssh_port + ' ' + ssh_hosts, errors='ignore') }}"
 
 # - name: SSH > Fingerprint > Debug > Host Keys
 #   ansible.builtin.debug:
@@ -28,7 +38,9 @@
     - host_keys.rsa == ''
     - host_keys.dsa == ''
     - host_keys.ecdsa == ''
+    - host_keys.ecdsask == ''
     - host_keys.ed25519 == ''
+    - host_keys.ed25519sk == ''
 
 - ansible.builtin.set_fact:
     known_hosts_filepath: "{% if global_known_hosts %}/etc/ssh/{% else %}~/.ssh/{% endif %}known_hosts.d/"
@@ -51,10 +63,18 @@
   become: false
   delegate_to: "localhost"
 
+- name: SSH > Fingerprint > Configure SSH Option > HashKnownHosts
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/ssh_config
+    regexp: '^    HashKnownHosts'
+    line: "    HashKnownHosts no"
+  become: true
+  delegate_to: "localhost"
+
 - name: SSH > Fingerprint > Configure SSH Option > GlobalKnownHostsFile
   ansible.builtin.lineinfile:
     path: /etc/ssh/ssh_config
-    regexp: '^GlobalKnownHostsFile'
+    regexp: '^    GlobalKnownHostsFile'
     line: "    GlobalKnownHostsFile {{ known_hosts_systempath }}%n /etc/ssh/known_hosts"
   become: true
   delegate_to: "localhost"
@@ -62,7 +82,7 @@
 - name: SSH > Fingerprint > Configure SSH Option > UserKnownHostsFile
   ansible.builtin.lineinfile:
     path: /etc/ssh/ssh_config
-    regexp: '^UserKnownHostsFile'
+    regexp: '^    UserKnownHostsFile'
     line: "    UserKnownHostsFile {{ known_hosts_userpath }}%n ~/.ssh/known_hosts"
   become: true
   delegate_to: "localhost"
@@ -78,7 +98,9 @@
       {{ host_keys.rsa | default('# RESERVED FOR RSA KEY', true) }}
       {{ host_keys.dsa | default('# RESERVED FOR DSA KEY', true) }}
       {{ host_keys.ecdsa | default('# RESERVED FOR ECDSA KEY', true) }}
+      {{ host_keys.ecdsask | default('# RESERVED FOR ECDSA-SK KEY', true) }}
       {{ host_keys.ed25519 | default('# RESERVED FOR ED25519 KEY', true) }}
+      {{ host_keys.ed25519sk | default('# RESERVED FOR ED25519-SK KEY', true) }}
   check_mode: true
   diff: true
   become: false
@@ -111,6 +133,8 @@
       {{ host_keys.rsa | default('# RESERVED FOR RSA KEY', true) }}
       {{ host_keys.dsa | default('# RESERVED FOR DSA KEY', true) }}
       {{ host_keys.ecdsa | default('# RESERVED FOR ECDSA KEY', true) }}
+      {{ host_keys.ecdsask | default('# RESERVED FOR ECDSA-SK KEY', true) }}
       {{ host_keys.ed25519 | default('# RESERVED FOR ED25519 KEY', true) }}
+      {{ host_keys.ed25519sk | default('# RESERVED FOR ED25519-SK KEY', true) }}
   become: "{{ global_known_hosts }}"
   delegate_to: "localhost"
